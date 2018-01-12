@@ -16,7 +16,6 @@ module Pos.DHT.Real.Real
        ) where
 
 
-import           Nub (ordNub)
 import           Universum
 
 import           Control.Exception.Safe (try)
