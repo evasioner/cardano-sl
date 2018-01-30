@@ -7281,7 +7281,7 @@ inherit (pkgs) mesa;};
          , cardano-sl-util, containers, cpphs, cryptonite, data-default
          , ether, exceptions, formatting, hspec, lens, log-warper
          , monad-control, MonadRandom, QuickCheck, random, safe-exceptions
-         , serokell-util, stdenv, text, text-format, time-units
+         , serokell-util, stdenv, stm, text, text-format, time-units
          , transformers-base, universum, unordered-containers, vector
          }:
          mkDerivation {
@@ -7296,7 +7296,7 @@ inherit (pkgs) mesa;};
              cardano-sl-update cardano-sl-util containers cryptonite
              data-default ether exceptions formatting lens log-warper
              monad-control MonadRandom QuickCheck random safe-exceptions
-             serokell-util text text-format time-units transformers-base
+             serokell-util stm text text-format time-units transformers-base
              universum unordered-containers vector
            ];
            libraryToolDepends = [ cpphs ];
