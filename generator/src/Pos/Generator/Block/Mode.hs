@@ -20,6 +20,7 @@ module Pos.Generator.Block.Mode
 
 import           Universum
 
+import           Control.Concurrent.STM (newEmptyTMVarIO)
 import           Control.Lens.TH (makeLensesWith)
 import qualified Control.Monad.Catch as UnsafeExc
 import           Control.Monad.Random.Strict (RandT)
@@ -31,6 +32,7 @@ import           System.Wlog (WithLogger, logWarning)
 
 import           Pos.Block.BListener (MonadBListener (..))
 import           Pos.Block.Slog (HasSlogGState (..))
+import           Pos.Block.Types (ProgressHeader, ProgressHeaderTag)
 import           Pos.Client.Txp.Addresses (MonadAddresses (..))
 import           Pos.Communication.Limits (HasAdoptedBlockVersionData (..))
 import           Pos.Configuration (HasNodeConfiguration)
@@ -135,6 +137,7 @@ data BlockGenContext ext = BlockGenContext
     -- rather want to set current slot (fake one) by ourselves.
     , bgcTxpGlobalSettings :: !TxpGlobalSettings
     , bgcReportingContext  :: !ReportingContext
+    , bgcProgressHeader    :: !ProgressHeader
     }
 
 makeLensesWith postfixLFields ''BlockGenContext
@@ -190,6 +193,7 @@ mkBlockGenContext bgcParams@BlockGenParams{..} = do
         bgcUpdateContext <- mkUpdateContext
         bgcTxpMem <- mkTxpLocalData
         bgcDelegation <- mkDelegationVar
+        bgcProgressHeader <- liftIO newEmptyTMVarIO 
         return BlockGenContext {..}
 
 data InitBlockGenContext = InitBlockGenContext
@@ -244,6 +248,9 @@ instance (MonadBlockGenBase m, MonadSlotsData ctx (InitBlockGenMode ext m))
 
 instance GS.HasGStateContext (BlockGenContext ext) where
     gStateContext = bgcGState_L
+
+instance HasLens ProgressHeaderTag (BlockGenContext ext) ProgressHeader where
+    lensOf = bgcProgressHeader_L
 
 instance HasLens (BlockGenContext ext) (BlockGenContext ext) (BlockGenContext ext) where
     lensOf = identity

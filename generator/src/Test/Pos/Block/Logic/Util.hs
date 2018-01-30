@@ -19,17 +19,18 @@ import           Unsafe (unsafeHead)
 
 import           Control.Monad.Random.Strict (evalRandT)
 import           Data.Default (Default (def))
+import           Ether.Internal (HasLens)
 import           Test.QuickCheck.Gen (Gen (MkGen), sized)
 import           Test.QuickCheck.Monadic (PropertyM, pick)
 
 import           Pos.AllSecrets (AllSecrets, HasAllSecrets (..), allSecrets)
-import           Pos.Block.Types (Blund)
+import           Pos.Block.Types (Blund, ProgressHeader, ProgressHeaderTag)
 import           Pos.Communication.Limits (HasAdoptedBlockVersionData)
 import           Pos.Core (BlockCount, GenesisData (..), HasConfiguration, HasGenesisData,
                            SlotId (..), epochIndexL, genesisData)
 import           Pos.Core.Block (Block)
 import           Pos.Generator.Block (BlockGenMode, BlockGenParams (..), MonadBlockGenInit,
-                                      genBlocks, tgpTxCountRange)
+                                      genBlocks, tgpTxCountRange, BlockGenContext)
 import           Pos.Txp (MempoolExt, MonadTxpLocal, TxpGlobalSettings, txpGlobalSettings)
 import           Pos.Util (HasLens', _neLast)
 import           Pos.Util.Chrono (NE, OldestFirst (..))
@@ -82,6 +83,7 @@ bpGenBlocks
        , MonadTxpLocal (BlockGenMode (MempoolExt m) m)
        , HasAllSecrets ctx
        , HasAdoptedBlockVersionData (BlockGenMode (MempoolExt m) m)
+       , HasLens ProgressHeaderTag (BlockGenContext (MempoolExt m)) ProgressHeader
        )
     => Maybe BlockCount
     -> EnableTxPayload
@@ -103,6 +105,7 @@ bpGenBlock
        , MonadTxpLocal (BlockGenMode (MempoolExt m) m)
        , Default (MempoolExt m)
        , HasAdoptedBlockVersionData (BlockGenMode (MempoolExt m) m)
+       , HasLens ProgressHeaderTag (BlockGenContext (MempoolExt m)) ProgressHeader
        )
     => EnableTxPayload -> InplaceDB -> PropertyM m Blund
 -- 'unsafeHead' is safe because we create exactly 1 block

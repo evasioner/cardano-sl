@@ -13,6 +13,7 @@ import           Universum
 import           Control.Lens (at, ix, _Wrapped)
 import           Control.Monad.Random.Strict (RandT, mapRandT)
 import           Data.Default (Default (def))
+import           Ether.Internal (HasLens)
 import           Formatting (build, sformat, (%))
 import           System.Random (RandomGen (..))
 import           System.Wlog (logWarning)
@@ -22,7 +23,7 @@ import           Pos.Block.Base (mkGenesisBlock)
 import           Pos.Block.Logic (applyBlocksUnsafe, createMainBlockInternal, normalizeMempool,
                                   verifyBlocksPrefix)
 import           Pos.Block.Slog (ShouldCallBListener (..))
-import           Pos.Block.Types (Blund)
+import           Pos.Block.Types (Blund, ProgressHeader, ProgressHeaderTag)
 import           Pos.Communication.Message ()
 import           Pos.Communication.Limits (HasAdoptedBlockVersionData)
 import           Pos.Core (EpochOrSlot (..), SlotId (..), addressHash, epochIndexL, getEpochOrSlot,
@@ -35,7 +36,7 @@ import           Pos.Delegation.Types (ProxySKBlockInfo)
 import           Pos.Generator.Block.Error (BlockGenError (..))
 import           Pos.Generator.Block.Mode (BlockGenMode, BlockGenRandMode, MonadBlockGen,
                                            MonadBlockGenInit, mkBlockGenContext, usingPrimaryKey,
-                                           withCurrentSlot)
+                                           withCurrentSlot, BlockGenContext)
 import           Pos.Generator.Block.Param (BlockGenParams, HasBlockGenParams (..))
 import           Pos.Generator.Block.Payload (genPayload)
 import           Pos.Lrc (lrcSingleShot)
@@ -56,6 +57,7 @@ type BlockTxpGenMode g ctx m =
     , Default (MempoolExt m)
     , MonadTxpLocal (BlockGenMode (MempoolExt m) m)
     , HasAdoptedBlockVersionData (BlockGenMode (MempoolExt m) m)
+    , HasLens ProgressHeaderTag (BlockGenContext (MempoolExt m)) ProgressHeader
     )
 
 -- | Generate an arbitrary sequence of valid blocks. The blocks are
@@ -66,7 +68,11 @@ type BlockTxpGenMode g ctx m =
 -- disk, then collected by using '()' as the monoid and 'const ()' as the
 -- injector, for example.
 genBlocks ::
-       forall g ctx m t . (BlockTxpGenMode g ctx m, Semigroup t, Monoid t)
+       forall g ctx m t .
+       ( BlockTxpGenMode g ctx m
+       , Semigroup t
+       , Monoid t
+       )
     => BlockGenParams
     -> (Maybe Blund -> t)
     -> RandT g m t
@@ -97,6 +103,7 @@ genBlock ::
        , Default (MempoolExt m)
        , MonadTxpLocal (BlockGenMode (MempoolExt m) m)
        , HasAdoptedBlockVersionData (BlockGenMode (MempoolExt m) m)
+       , HasLens ProgressHeaderTag (BlockGenContext (MempoolExt m)) ProgressHeader
        )
     => EpochOrSlot
     -> BlockGenRandMode (MempoolExt m) g m (Maybe Blund)

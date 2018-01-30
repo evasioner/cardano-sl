@@ -25,9 +25,11 @@ module Pos.Block.Logic.Internal
 
 import           Universum
 
+import           Control.Concurrent.STM (tryTakeTMVar, putTMVar)
 import           Control.Lens (each, _Wrapped)
 import qualified Crypto.Random as Rand
-import           Ether.Internal (lensOf)
+import qualified Data.List.NonEmpty as NE (last)
+import           Ether.Internal (HasLens, lensOf)
 import           Formatting (sformat, (%))
 import           Mockable (CurrentTime, Mockable)
 import           Serokell.Util.Text (listJson)
@@ -35,10 +37,11 @@ import           Serokell.Util.Text (listJson)
 import           Pos.Block.BListener (MonadBListener)
 import           Pos.Block.Slog (BypassSecurityCheck (..), MonadSlogApply, MonadSlogBase,
                                  ShouldCallBListener, slogApplyBlocks, slogRollbackBlocks)
-import           Pos.Block.Types (Blund, Undo (undoDlg, undoTx, undoUS))
+import           Pos.Block.Types (Blund, Undo (undoDlg, undoTx, undoUS), ProgressHeaderTag,
+                                  ProgressHeader)
 import           Pos.Core (ComponentBlock (..), HasConfiguration, IsGenesisHeader, epochIndexL,
                            gbHeader, headerHash, mainBlockDlgPayload, mainBlockSscPayload,
-                           mainBlockTxPayload, mainBlockUpdatePayload)
+                           mainBlockTxPayload, mainBlockUpdatePayload, blockHeader)
 import           Pos.Core.Block (Block, GenesisBlock, MainBlock)
 import           Pos.DB (MonadDB, MonadDBRead, MonadGState, SomeBatchOp (..))
 import qualified Pos.DB.GState.Common as GS (writeBatchGState)
@@ -98,6 +101,7 @@ type MonadBlockApply ctx m
        , MonadBListener m
        -- Needed for rollback
        , Mockable CurrentTime m
+       , HasLens ProgressHeaderTag ctx ProgressHeader
        )
 
 type MonadMempoolNormalization ctx m
@@ -191,6 +195,11 @@ applyBlocksDbUnsafeDo scb blunds pModifier = do
         , slogBatch
         ]
     sanityCheckDB
+    -- Now that they've been applied, we must update the progress.
+    let newestBlock = fst (NE.last (getOldestFirst blunds))
+    progressHeaderVar <- view (lensOf @ProgressHeaderTag)
+    atomically $ do void $ tryTakeTMVar progressHeaderVar
+                    putTMVar progressHeaderVar $ newestBlock ^. blockHeader
 
 -- | Rollback sequence of blocks, head-newest order expected with head being
 -- current tip. It's also assumed that lock on block db is taken already.
